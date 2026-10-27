@@ -11,7 +11,17 @@ extern "C"
 
 #include <nlohmann/json.hpp>
 
+#include "Playback.h"
+#include "FakeArm.h"
+#include "ui/TimelineUI.h"
+#include "ui/OrbitCamera.h"
+#include "ui/SidePanel.h"
+#include "ui/Trails.h"
+#include "ui/Theme.h"
+#include "ui/Scene.h"
+
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -142,12 +152,12 @@ public:
         m_dataSource = dataSource;
     }
 
-    void AddConstraint(const Constraints<SingleGyroCompute> constraint)
+    void AddConstraint(std::unique_ptr<Constraints<SingleGyroCompute>> constraint)
     {
-        m_constraints.push_back(constraint);
+        m_constraints.push_back(std::move(constraint));
     }
 
-    const std::vector<Constraints<SingleGyroCompute>>& GetConstraints() const
+    const std::vector<std::unique_ptr<Constraints<SingleGyroCompute>>>& GetConstraints() const
     {
         return m_constraints;
     }
@@ -195,7 +205,7 @@ private:
 
     bool m_computed = false;
     float m_currentTime = 0;
-    std::vector<Constraints<SingleGyroCompute>> m_constraints;
+    std::vector<std::unique_ptr<Constraints<SingleGyroCompute>>> m_constraints;
     DataPipeline<GyroData>* m_dataSource = nullptr;
 };
 
@@ -208,24 +218,7 @@ public:
     virtual void Render() = 0;
 };
 
-class TimelineUI : public UI
-{
-public:
-    void Render() override
-    {
-        //...
-    }
-
-    float dtRate()
-    {
-        return 1;
-    }
-
-    float getTime()
-    {
-        return 0;
-    }
-};
+// TimelineUI lives in ui/TimelineUI.h
 
 // ----------------------------------- PROGRAM -------------------------------------------
 class Program
@@ -266,8 +259,8 @@ private:
         //...
         if (m_weak_Timeline)
         {
-            dtRate = m_weak_Timeline->dtRate();
-            timelineTime = m_weak_Timeline->getTime();
+            dtRate = m_weak_Timeline->GetSpeed();
+            timelineTime = m_weak_Timeline->GetTime();
         }
 
     }
@@ -286,7 +279,7 @@ private:
         }
     }
 
-    TimelineUI* m_weak_Timeline = nullptr; // Do not delete, will be deleted from UIs
+    Timeline* m_weak_Timeline = nullptr; // Do not delete, owned elsewhere
     std::vector<UI*> m_UIs;
     std::vector<Object*> m_objects;
 
@@ -295,57 +288,55 @@ private:
 
 int main()
 {
-    // -----------------------------  L U A  ----------------------------------
-    lua_State* L = luaL_newstate();
-    luaL_openlibs(L);
-
-    if (luaL_dostring(L, "result = 6 * 7") != LUA_OK)
-    {
-        std::cerr << "Lua error: " << lua_tostring(L, -1) << std::endl;
-        lua_pop(L, 1);
-    }
-    lua_getglobal(L, "result");
-    const int luaResult = static_cast<int>(lua_tointeger(L, -1));
-    lua_pop(L, 1);
-
-    // -------------------------  J S O N  --------------------------------------
-    nlohmann::json payload;
-    payload["engine"] = "raylib";
-    payload["gui"]    = "imgui";
-    payload["script"] = "lua";
-    payload["answer"] = luaResult;
-
-    const std::string jsonDump = payload.dump(2);
-    std::cout << "JSON payload:\n" << jsonDump << std::endl;
-
-    // ---------------------------  r a y l i b   +   i m g u i  ------------------------------------
-    constexpr int screenWidth  = 900;
-    constexpr int screenHeight = 600;
-
-    InitWindow(screenWidth, screenHeight, "raylib + imgui + lua + json - proof of life");
+    // TODO: move this loop into Program once main.cpp is split into files
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
+    InitWindow(1280, 720, "Vas-Vis");
     SetTargetFPS(60);
 
     rlImGuiSetup(true); /* dark theme */
+    Theme::ApplyImGuiStyle();
+
+    FakeArm arm; // placeholder until the Charles CSV pipeline exists
+    Timeline timeline;
+    timeline.SetDuration(arm.GetDuration());
+    TimelineUI timelineUI(timeline);
+
+    // Look at the arm from front-right and above, far enough back to see the floor shadows under it
+    OrbitCamera camera({ 0.2f, 0.7f, 0.0f }, 2.8f, 35.0f, 25.0f);
+
+    // Trails on elbow and wrist by default (the shoulder barely moves)
+    TrailSettings trails;
+    trails.showJoint = { false, true, true };
+
+    std::vector<std::string> jointNames;
+    for (int joint = 0; joint < FakeArm::JointCount; ++joint)
+        jointNames.push_back(FakeArm::JointName(joint));
+    SidePanel sidePanel(timeline, trails, camera, jointNames);
 
     while (!WindowShouldClose())
     {
+        // 1. Move the clock, 2. tell every object what time it is
+        timeline.Update(GetFrameTime());
+        arm.SetTime(timeline.GetTime());
+        camera.Update();
+
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(Theme::BackgroundBottom);
+        Scene::DrawBackground();
 
-        DrawText("raylib is rendering this frame", 20, 20, 20, DARKGRAY);
-        DrawText(TextFormat("Lua computed 6 * 7 = %d", luaResult), 20, 50, 20, DARKGRAY);
+        // 3. Draw the 3D scene, centred in the area next to the side panel and above the timeline
+        BeginMode3D(camera.Get());
+        Scene::CenterViewIn(SidePanel::Width, 0.0f, static_cast<float>(GetScreenWidth()),
+                            static_cast<float>(GetScreenHeight()) - TimelineUI::Height);
+        Scene::DrawFloorGrid();
+        DrawTrails(arm.GetTrack(), timeline.GetTime(), trails, FakeArm::JointColor);
+        arm.Render();
+        EndMode3D();
 
+        // 4. Draw the UI on top
         rlImGuiBegin();
-
-        ImGui::Begin("Vendored Libraries - Proof of Life");
-        ImGui::Text("raylib : window + rendering (this frame)");
-        ImGui::Text("imgui  : this window, via the rlImGui backend");
-        ImGui::Text("lua    : 6 * 7 = %d (computed in a Lua VM)", luaResult);
-        ImGui::Separator();
-        ImGui::TextUnformatted("nlohmann::json output:");
-        ImGui::TextWrapped("%s", jsonDump.c_str());
-        ImGui::End();
-
+        sidePanel.Render();
+        timelineUI.Render();
         rlImGuiEnd();
 
         EndDrawing();
@@ -353,7 +344,6 @@ int main()
 
     rlImGuiShutdown();
     CloseWindow();
-    lua_close(L);
 
     return 0;
 }
