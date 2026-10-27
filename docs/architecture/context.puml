@@ -1,0 +1,16 @@
+@startuml Vas-Vis Context
+!include <C4/C4_Context>
+
+title Vas-Vis - System Context
+
+LAYOUT_LEFT_RIGHT()
+
+Person(operator, "Operator", "Loads a recording, controls playback, and explores the 3D view.")
+System(vasVis, "Vas-Vis", "Desktop application that turns gyroscope recordings into an interactive 3D arm visualization.")
+System_Ext(recording, "Gyroscope CSV recording", "Local data.csv file containing timestamped samples for sensors 0D through 7D.")
+
+Rel(operator, vasVis, "Loads and explores")
+Rel(vasVis, recording, "Reads at startup")
+
+SHOW_LEGEND()
+@enduml

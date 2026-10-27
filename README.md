@@ -58,9 +58,27 @@ faster builds.)
 
 ## Project layout
 
-(To be made when we have scaffold)
+- `src/main.cpp` contains application startup, the render loop, and wiring.
+- `src/data/CsvGyroLoader.*` validates and normalizes the CSV recording.
+- `src/data/DataPipeline.h` provides the typed filter pipeline used by data
+  preprocessing.
+- `src/data/CharlesArm.*` converts gyro samples into the render-facing
+  `FrameTrack`.
+- `src/ui/` contains playback controls, camera controls, trails, and drawing.
 
-Add more `.cpp`/`.c` files anywhere under `src/` and they're picked up
-automatically on the next CMake configure (re-run `cmake -S . -B build`
-if you add a *new* file so it's detected).
+Add more `.cpp`/`.c` files anywhere under `src/` and they are picked up
+automatically on the next CMake configure (re-run `cmake -S . -B build` if
+you add a new file so it is detected).
 
+## Architecture diagrams
+
+The PlantUML diagrams in [`docs/architecture/`](docs/architecture/) describe the
+current implementation:
+
+- [`context.puml`](docs/architecture/context.puml) — system context
+- [`container.puml`](docs/architecture/container.puml) — logical containers
+- [`component.puml`](docs/architecture/component.puml) — application components
+- [`ingestion-sequence.puml`](docs/architecture/ingestion-sequence.puml) — CSV ingestion and frame-track preparation
+- [`frame-sequence.puml`](docs/architecture/frame-sequence.puml) — one playback frame from user action to rendered showcase
+
+The C4 diagrams use the standard C4-PlantUML library includes.

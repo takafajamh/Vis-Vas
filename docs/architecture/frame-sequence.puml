@@ -1,0 +1,39 @@
+@startuml Vas-Vis Frame
+
+title Vas-Vis - One Showcase Frame
+autonumber
+
+actor Operator
+participant "TimelineUI" as TimelineUI
+participant "main.cpp" as Main
+participant "Timeline" as Timeline
+participant "CharlesArm" as Arm
+participant "FrameTrack" as Track
+participant "OrbitCamera" as Camera
+participant "Trail renderer" as Trails
+participant "Scene renderer" as Scene
+participant "raylib / ImGui window" as Window
+
+Operator -> TimelineUI: Press Play or move the slider
+TimelineUI -> Timeline: Update playback time
+Main -> Timeline: Update(frame time)
+Timeline --> Main: Current time
+
+Main -> Arm: SetTime(current time)
+Arm -> Track: Sample(current time)
+Track --> Arm: Interpolated joint frame
+
+Main -> Camera: Update input
+Camera --> Main: Camera3D
+Main -> Scene: Draw background, grid, and camera view
+Main -> Trails: Draw enabled trails
+Trails -> Track: Sample recent time range
+Track --> Trails: Joint positions
+Main -> Arm: Render current frame
+Arm -> Scene: Draw bones and joints
+
+Main -> TimelineUI: Render controls
+Main -> Window: Present 3D scene and controls
+Window --> Operator: Updated arm visualization
+
+@enduml

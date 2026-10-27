@@ -1,0 +1,28 @@
+@startuml Vas-Vis Containers
+!include <C4/C4_Container>
+
+title Vas-Vis - Container View
+
+LAYOUT_LEFT_RIGHT()
+
+Person(operator, "Operator", "Controls recording playback and the 3D view.")
+System_Ext(recording, "Gyroscope CSV recording", "Local data.csv file.")
+
+System_Boundary(vasVis, "Vas-Vis desktop executable") {
+    Container(ui, "ImGui UI", "Dear ImGui / rlImGui", "Renders the timeline and side panel and sends user actions to the application state.")
+    Container(playback, "Playback and timeline", "C++", "Owns the shared clock, playback controls, and interpolated FrameTrack access.")
+    Container(processing, "Recording processing", "C++", "Loads, validates, normalizes, maps, integrates, and converts gyro samples into arm frames.")
+    Container(rendering, "3D rendering", "raylib / C++", "Renders the arm, trails, floor, camera view, and scene background.")
+}
+
+Rel(operator, ui, "Uses")
+Rel(ui, playback, "Changes playback state")
+Rel(ui, rendering, "Changes camera and trail settings")
+Rel(recording, processing, "Provides CSV samples")
+Rel(processing, playback, "Provides FrameTrack and duration")
+Rel(playback, rendering, "Provides current time and frame")
+Rel(rendering, ui, "Displays the interactive view")
+
+
+SHOW_LEGEND()
+@enduml

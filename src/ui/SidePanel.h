@@ -25,8 +25,10 @@ class SidePanel
 public:
     static constexpr float Width = 300.0f; // pixels
 
-    SidePanel(const Timeline& timeline, TrailSettings& trails, OrbitCamera& camera, std::vector<std::string> jointNames)
-        : m_timeline(timeline), m_trails(trails), m_camera(camera), m_jointNames(std::move(jointNames))
+    SidePanel(const Timeline& timeline, TrailSettings& trails, OrbitCamera& camera, std::vector<std::string> jointNames,
+              std::string recordingDescription)
+        : m_timeline(timeline), m_trails(trails), m_camera(camera), m_jointNames(std::move(jointNames)),
+          m_recordingDescription(std::move(recordingDescription))
     {
     }
 
@@ -54,7 +56,7 @@ private:
         if (!ImGui::CollapsingHeader("Recording", ImGuiTreeNodeFlags_DefaultOpen))
             return;
 
-        ImGui::TextWrapped("Source: Fake arm (test data)");
+        ImGui::TextWrapped("Source: %s", m_recordingDescription.c_str());
         ImGui::Text("Length: %.2f s", m_timeline.GetDuration());
         ImGui::Spacing();
     }
@@ -144,6 +146,7 @@ private:
     TrailSettings& m_trails;
     OrbitCamera& m_camera;
     std::vector<std::string> m_jointNames;
+    std::string m_recordingDescription;
 
     float m_helpAnim = 0.0f; // 0 = help closed, 1 = fully open
 };

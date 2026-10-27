@@ -1,0 +1,30 @@
+@startuml Vas-Vis Ingestion
+
+title Vas-Vis - Recording Ingestion
+autonumber
+
+participant "main.cpp" as Main
+database "data.csv" as Csv
+participant "CsvGyroLoader" as Loader
+participant "CharlesArm" as Arm
+participant "DataPipeline" as Pipeline
+participant "FrameTrack" as Track
+
+Main -> Loader: LoadGyroCsv("data.csv")
+Loader -> Csv: Read rows
+Csv --> Loader: Raw gyro fields
+Loader -> Loader: Validate rows
+Loader -> Loader: Skip TEMP rows
+Loader -> Loader: Sort and normalize timestamps
+Loader --> Main: GyroRecording
+
+Main -> Arm: Construct with recording
+Arm -> Pipeline: Apply sample pipeline
+Pipeline --> Arm: Processed samples
+Arm -> Arm: Map sensors and integrate gyro values
+Arm -> Arm: Build joint positions
+Arm -> Track: Add and sort frames
+Track --> Arm: Precomputed FrameTrack
+Arm --> Main: Ready for playback
+
+@enduml

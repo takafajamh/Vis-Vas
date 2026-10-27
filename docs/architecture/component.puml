@@ -1,0 +1,48 @@
+@startuml Vas-Vis Components
+!include <C4/C4_Component>
+
+title Vas-Vis - Component View
+
+LAYOUT_LEFT_RIGHT()
+
+Person(operator, "Operator", "Uses the desktop application.")
+System_Ext(recording, "data.csv", "Semicolon-delimited gyroscope recording.")
+
+Container_Boundary(app, "Vas-Vis executable") {
+    Component(main, "Application startup and loop", "main.cpp", "Coordinates startup, per-frame updates, input, and drawing.")
+
+    Component(csvLoader, "CSV loader", "CsvGyroLoader", "Validates rows, skips TEMP, sorts samples, and normalizes timestamps.")
+    Component(pipeline, "Data pipeline", "DataPipeline<GyroSample>", "Provides the preprocessing pipeline boundary for recorded samples.")
+    Component(charlesArm, "CharlesArm", "CharlesArm", "Maps sensors to joints, integrates gyro values, builds frames, and renders the arm.")
+    Component(frameTrack, "FrameTrack", "Playback.h", "Stores sorted frames and interpolates joint positions at a requested time.")
+
+    Component(timeline, "Timeline", "Playback.h", "The shared playback clock and duration boundary.")
+    Component(timelineUi, "TimelineUI", "TimelineUI.h", "Provides play, pause, seek, rewind, jump, and speed controls.")
+    Component(sidePanel, "SidePanel", "SidePanel.h", "Provides recording, trail, and camera controls.")
+    Component(camera, "OrbitCamera", "OrbitCamera.h", "Converts mouse and keyboard input into a 3D camera view.")
+    Component(trails, "Trail renderer", "Trails.h", "Samples FrameTrack over a time window and draws joint trails.")
+    Component(scene, "Scene renderer", "Scene.h", "Draws the background, grid, bones, joints, and shadows.")
+}
+
+Rel(operator, timelineUi, "Controls playback")
+Rel(operator, sidePanel, "Controls view")
+Rel(recording, csvLoader, "Read")
+Rel(main, csvLoader, "Loads at startup")
+Rel(csvLoader, charlesArm, "Returns GyroRecording")
+Rel(charlesArm, pipeline, "Processes samples through")
+Rel(charlesArm, frameTrack, "Builds")
+Rel(main, timeline, "Sets duration and updates")
+Rel(timelineUi, timeline, "Reads and changes")
+Rel(sidePanel, timeline, "Reads duration")
+Rel(sidePanel, camera, "Changes view")
+Rel(main, charlesArm, "Sets time and renders")
+Rel(timeline, charlesArm, "Provides current time")
+Rel(frameTrack, trails, "Provides interpolated frames")
+Rel(main, trails, "Draws enabled trails")
+Rel(charlesArm, scene, "Draws arm geometry")
+Rel(trails, scene, "Draws trail geometry")
+Rel(camera, main, "Provides Camera3D")
+Rel(main, scene, "Draws scene")
+
+SHOW_LEGEND()
+@enduml
